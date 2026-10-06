@@ -3,19 +3,22 @@ package cli
 import (
 	"fmt"
 	"os"
-	"text/tabwriter"
 
 	dockerinfo "github.com/gopher-opsx/platform-doctor-cli/internal/docker"
 	"github.com/spf13/cobra"
 )
 
+var statusCompose bool
+
 var statusCmd = &cobra.Command{
 	Use:   "status",
-	Short: "Show Docker container status",
-	Long: `Status collects the current state of Docker containers.
+	Short: "Show container or Compose service status",
 
-This command is read-only and makes no changes.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	RunE: func(
+		cmd *cobra.Command,
+		args []string,
+	) error {
+
 		out := cmd.OutOrStdout()
 
 		currentDir, err := os.Getwd()
@@ -26,37 +29,81 @@ This command is read-only and makes no changes.`,
 			)
 		}
 
-		containers, err := dockerinfo.ListContainers(currentDir)
+		if statusCompose {
+			services, err :=
+				dockerinfo.DiscoverComposeServices(
+					currentDir,
+				)
+			if err != nil {
+				return err
+			}
+
+			if len(services) == 0 {
+				fmt.Fprintln(
+					out,
+					"No Docker Compose services found.",
+				)
+
+				return nil
+			}
+
+			fmt.Fprintf(
+				out,
+				"%-20s %-24s %-12s %-16s %s\n",
+				"PROJECT",
+				"SERVICE",
+				"STATE",
+				"HEALTH",
+				"CONTAINER",
+			)
+
+			for _, service := range services {
+
+				fmt.Fprintf(
+					out,
+					"%-20s %-24s %-12s %-16s %s\n",
+					service.Project,
+					service.Service,
+					service.State,
+					service.Health,
+					service.Container,
+				)
+			}
+
+			return nil
+		}
+
+		containers, err :=
+			dockerinfo.ListContainers(
+				currentDir,
+			)
 		if err != nil {
 			return err
 		}
 
-		fmt.Fprintln(out, "DOCTOR STATUS")
-		fmt.Fprintln(out)
-
 		if len(containers) == 0 {
-			fmt.Fprintln(out, "No Docker containers found.")
+			fmt.Fprintln(
+				out,
+				"No Docker containers found.",
+			)
+
 			return nil
 		}
 
-		writer := tabwriter.NewWriter(
+		fmt.Fprintf(
 			out,
-			0,
-			4,
-			2,
-			' ',
-			0,
-		)
-
-		fmt.Fprintln(
-			writer,
-			"CONTAINER\tSTATE\tSTATUS\tIMAGE",
+			"%-34s %-12s %-30s %s\n",
+			"CONTAINER",
+			"STATE",
+			"STATUS",
+			"IMAGE",
 		)
 
 		for _, container := range containers {
+
 			fmt.Fprintf(
-				writer,
-				"%s\t%s\t%s\t%s\n",
+				out,
+				"%-34s %-12s %-30s %s\n",
 				container.Name,
 				container.State,
 				container.Status,
@@ -64,10 +111,19 @@ This command is read-only and makes no changes.`,
 			)
 		}
 
-		return writer.Flush()
+		return nil
 	},
 }
 
 func init() {
-	rootCmd.AddCommand(statusCmd)
+	statusCmd.Flags().BoolVar(
+		&statusCompose,
+		"compose",
+		false,
+		"show Docker Compose services",
+	)
+
+	rootCmd.AddCommand(
+		statusCmd,
+	)
 }
