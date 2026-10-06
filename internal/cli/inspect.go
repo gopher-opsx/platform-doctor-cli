@@ -134,13 +134,14 @@ var inspectCmd = &cobra.Command{
 			currentDir,
 			containerName,
 			50,
+			"15m",
 		)
 		if err != nil {
 			return err
 		}
 
 		fmt.Fprintln(out)
-		fmt.Fprintln(out, "RECENT LOGS")
+		fmt.Fprintln(out, "RECENT LOGS — LAST 15 MINUTES")
 
 		if len(logs) == 0 {
 			fmt.Fprintln(out, "No recent logs.")

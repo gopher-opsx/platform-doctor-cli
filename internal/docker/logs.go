@@ -11,15 +11,32 @@ func CollectLogs(
 	dir string,
 	containerName string,
 	lines int,
+	since string,
 ) ([]string, error) {
+
+	args := []string{
+		"logs",
+		"--tail",
+		fmt.Sprintf("%d", lines),
+	}
+
+	if strings.TrimSpace(since) != "" {
+		args = append(
+			args,
+			"--since",
+			since,
+		)
+	}
+
+	args = append(
+		args,
+		containerName,
+	)
 
 	result, err := runner.Run(
 		dir,
 		"docker",
-		"logs",
-		"--tail",
-		fmt.Sprintf("%d", lines),
-		containerName,
+		args...,
 	)
 	if err != nil {
 		return nil, fmt.Errorf(

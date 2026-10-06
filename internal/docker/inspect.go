@@ -91,7 +91,9 @@ func InspectContainer(
 
 	health := "not configured"
 
-	if raw.State.Health != nil {
+	if raw.State.Status != "running" {
+		health = "not applicable"
+	} else if raw.State.Health != nil {
 		health = raw.State.Health.Status
 	}
 
